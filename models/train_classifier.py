@@ -20,6 +20,11 @@ from nltk.stem.wordnet import WordNetLemmatizer
 
 
 def load_data(database_filepath):
+    """
+    Loads data from the SQLite database, reading from table `cleaned_data`
+    :param database_filepath: The path of SQLite database to read
+    :return: Message, categories classification of messages, list of categories
+    """
     engine = create_engine('sqlite:///%s' % database_filepath)
     df = pd.read_sql_table(con=engine, table_name='cleaned_data')
 
@@ -40,6 +45,8 @@ def load_data(database_filepath):
 def is_stop_punc(token):
     """
     Returns True if the word is a punctuation or a stop word.
+    :param token: String token to analyse
+    :return: True if stop word or punctuation
     """
     if token in string.punctuation:
         return True
@@ -49,6 +56,14 @@ def is_stop_punc(token):
 
 
 def tokenize(text, stem_or_lem='stem'):
+    """
+    Function to tokenise the text and perform stemming or lemmatisation
+    https://stackoverflow.com/questions/10554052/what-are-the-major-differences-and-benefits-of-porter-and-lancaster-stemming-alg
+    :param text: Text to analyse
+    :param stem_or_lem: Option to stem or lemmatise
+    :return: List of tokens
+    >>> tokenize("This is a test for the tokeniser to see how effective it is.")
+    """
     text = text.lower()
 
     tokens = nltk.word_tokenize(text)
@@ -67,16 +82,26 @@ def tokenize(text, stem_or_lem='stem'):
 
 
 def build_model():
+    """
+    Prepares a new instance of the Pipeline
+    :return: Pipeline with transforms for text analysis
+    """
     classifier = Pipeline([
         ('vect', CountVectorizer(tokenizer=tokenize)),
         ('tf_idf', TfidfTransformer()),
-        ('multi_class', MultiOutputClassifier(estimator=RandomForestClassifier(n_estimators=10)))
+        ('multi_class', MultiOutputClassifier(estimator=RandomForestClassifier(n_estimators=20)))
     ])
     
     return classifier
 
 
 def display_results(y_test, y_pred):
+    """
+    Compares the predicted and the test score and returns the metrics
+    :param y_test: Test data
+    :param y_pred: Predicted data
+    :return: A dictionary with label, Confusion matrix and Accuracy
+    """
     labels = np.unique(y_pred)
     confusion_mat = confusion_matrix(y_test, y_pred, labels=labels)
     accuracy = (y_pred == y_test).mean()
@@ -87,7 +112,14 @@ def display_results(y_test, y_pred):
 
 
 def evaluate_model(model, X_test, Y_test, category_names):
-    
+    """
+    Takes test data and return the metrics for ech group
+    :param model: The model to evaluate
+    :param X_test: Test input data
+    :param Y_test: Test output data
+    :param category_names: The expected category name
+    :return: None
+    """
     y_pred = model.predict(X_test.iloc[:, 0].values)
 
     # display results
@@ -105,6 +137,12 @@ def evaluate_model(model, X_test, Y_test, category_names):
 
 
 def save_model(model, model_filepath):
+    """
+    Saves the model as a file
+    :param model: Model to be saved
+    :param model_filepath: Path of the destination file
+    :return: None
+    """
     joblib.dump(model, model_filepath)
 
 

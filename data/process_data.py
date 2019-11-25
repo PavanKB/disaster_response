@@ -4,6 +4,13 @@ from sqlalchemy import create_engine
 
 
 def load_data(messages_filepath, categories_filepath):
+    """
+    Read the two csv files of messages and categories and reorganise as one
+    hot encoding for the message to the category.
+    :param messages_filepath: Path of the messages csv
+    :param categories_filepath: Path of categories csv
+    :return: Data frame with the merged data
+    """
     messages = pd.read_csv(messages_filepath)
     categories = pd.read_csv(categories_filepath)
     df = pd.merge(messages, categories, on=['id'], how='outer')
@@ -35,12 +42,23 @@ def load_data(messages_filepath, categories_filepath):
 
 
 def clean_data(df):
+    """
+    Function to remove the duplicates and fill NA values if any.
+    :param df: The data frame to clean
+    :return: Cleaned data frame
+    """
     df.drop_duplicates(inplace=True)
     df.fillna(value=0, inplace=True)
     return df
 
 
 def save_data(df, database_filename):
+    """
+    Save the data frame as `cleaned_data` table into the SQLite database
+    :param df: Data frame to be saved
+    :param database_filename: Name of the database
+    :return:
+    """
     engine = create_engine('sqlite:///%s' % database_filename)
     df.to_sql('cleaned_data', engine, index=False)
 
