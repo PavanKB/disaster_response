@@ -82,7 +82,10 @@ def build_model():
     classifier = Pipeline([
         ('vect', CountVectorizer(tokenizer=tokenize)),
         ('tf_idf', TfidfTransformer()),
-        ('multi_class', MultiOutputClassifier(estimator=RandomForestClassifier(n_estimators=20)))
+        ('multi_class', MultiOutputClassifier(estimator=
+                                              RandomForestClassifier(n_estimators=20)
+                                              )
+         )
     ])
     
     return classifier
@@ -106,7 +109,7 @@ def display_results(y_test, y_pred):
 
 def evaluate_model(model, X_test, Y_test, category_names):
     """
-    Takes test data and return the metrics for ech group
+    Takes test data and prints the metrics for each group
     :param model: The model to evaluate
     :param X_test: Test input data
     :param Y_test: Test output data

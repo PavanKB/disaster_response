@@ -12,8 +12,6 @@ The messages are processed using the following:
 1. `TF-IDF`
 1. `MultiOutputClassifier` using `RandomForest`
 
-The pipeline was further optimised by hyper parameter tuning using `GridSearch`
-The best parameters were : **TO ADD**
 
 ## Files
 The project is organised as follows:
