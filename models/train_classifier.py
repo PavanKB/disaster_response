@@ -3,6 +3,7 @@ import string
 import pandas as pd
 import numpy as np
 from sqlalchemy import create_engine
+import joblib
 
 from sklearn.multioutput import MultiOutputClassifier
 from sklearn.feature_extraction.text import TfidfTransformer, CountVectorizer
@@ -10,7 +11,6 @@ from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import confusion_matrix, classification_report
 from sklearn.pipeline import Pipeline
-from sklearn.externals import joblib
 
 import nltk
 nltk.download(['punkt', 'stopwords', 'wordnet'])
