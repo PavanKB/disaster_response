@@ -15,7 +15,6 @@ from sklearn.externals import joblib
 import nltk
 nltk.download(['punkt', 'stopwords', 'wordnet'])
 from nltk.corpus import stopwords
-from nltk.stem.snowball import SnowballStemmer
 from nltk.stem.wordnet import WordNetLemmatizer
 
 
@@ -55,12 +54,12 @@ def is_stop_punc(token):
     return False
 
 
-def tokenize(text, stem_or_lem='stem'):
+def tokenize(text):
     """
-    Function to tokenise the text and perform stemming or lemmatisation
+    Function to tokenise the text and perform lemmatisation
+    https://towardsdatascience.com/stemming-lemmatization-what-ba782b7c0bd8
     https://stackoverflow.com/questions/10554052/what-are-the-major-differences-and-benefits-of-porter-and-lancaster-stemming-alg
     :param text: Text to analyse
-    :param stem_or_lem: Option to stem or lemmatise
     :return: List of tokens
     >>> tokenize("This is a test for the tokeniser to see how effective it is.")
     """
@@ -69,14 +68,8 @@ def tokenize(text, stem_or_lem='stem'):
     tokens = nltk.word_tokenize(text)
     tokens_clean = [token for token in tokens if not is_stop_punc(token)]
 
-    if stem_or_lem.lower() == 'stem':
-        stemmer = SnowballStemmer('english')
-        result = [stemmer.stem(token) for token in tokens_clean]
-    elif stem_or_lem.lower() == 'lem':
-        lemmatiser = WordNetLemmatizer()
-        result = [lemmatiser.lemmatize(token) for token in tokens_clean]
-    else:
-        raise ValueError('stem or lem. Could not understand \'%s\' ?' % stem_or_lem)
+    lemmatiser = WordNetLemmatizer()
+    result = [lemmatiser.lemmatize(token) for token in tokens_clean]
 
     return result
 
