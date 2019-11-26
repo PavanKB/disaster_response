@@ -1,4 +1,5 @@
 import sys
+import time
 import string
 import pandas as pd
 import numpy as np
@@ -83,7 +84,8 @@ def build_model():
         ('vect', CountVectorizer(tokenizer=tokenize)),
         ('tf_idf', TfidfTransformer()),
         ('multi_class', MultiOutputClassifier(estimator=
-                                              RandomForestClassifier(n_estimators=20)
+                                              RandomForestClassifier(n_estimators=20),
+                                              n_jobs=-1
                                               )
          )
     ])
@@ -142,6 +144,22 @@ def save_model(model, model_filepath):
     joblib.dump(model, model_filepath)
 
 
+def grid_search(model, params, X_train, Y_train, n_jobs=1):
+    """
+    Performs a grid search and returns the optimised model.
+    :param model: The model to optimise
+    :param params: The dictionary or parameters
+    :param X_train: Train dataset
+    :param Y_train:
+    :return: Optimised model
+    """
+    cv = GridSearchCV(model, params, n_jobs=n_jobs, cv=3, verbose=50, error_score=0, refit=True)
+    cv.fit(X_train, Y_train)
+
+    # Return the refitted model
+    return cv.best_estimator_
+
+
 def main():
     if len(sys.argv) == 3:
 
@@ -154,11 +172,22 @@ def main():
         print('Building model...')
         model = build_model()
 
-        print('Training model...')
-        model.fit(X_train.iloc[:, 0].values, Y_train.values)
+        print('Doing GridSearch')
+        t_start = time.perf_counter()
+        parameters = {'multi_class__estimator__n_estimators': [40, 50],  # 30
+                      'multi_class__estimator__criterion': ['gini', 'entropy'],  # Entropy
+                      'multi_class__estimator__min_samples_split': [2, 4],  # 2
+                      'multi_class__estimator__min_samples_leaf': [2, 4],  # 4
+                      }
+        model = grid_search(model, parameters, X_train.iloc[:, 0].values, Y_train.values, n_jobs=1)
+        t_stop = time.perf_counter()
+        print("Elapsed time: %.1f [min]" % ((t_stop - t_start) / 60))
 
         print('Evaluating model...')
+        t_start = time.perf_counter()
         evaluate_model(model, X_test, Y_test, category_names)
+        t_stop = time.perf_counter()
+        print("Elapsed time: %.1f [min]" % ((t_stop - t_start) / 60))
 
         print('Saving model...\n    MODEL: {}'.format(model_filepath))
         save_model(model, model_filepath)
