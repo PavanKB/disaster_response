@@ -76,17 +76,18 @@ def tokenize(text):
     return clean_tokens
 
 
-def build_model(tokeniser, estimator):
+def build_model(tokeniser, estimator, n_jobs=None):
     """
     Prepares a new instance of the Pipeline
     :param tokeniser: Tokeniser to use
     :param estimator: Estimator to use e.g RandomForest
+    :param n_jobs: Num of workers
     :return: Pipeline with transforms for text analysis
     """
 
     classifier = Pipeline([('vect', CountVectorizer(tokenizer=tokeniser)),
                            ('tf_idf', TfidfTransformer()),
-                           ('multi_class', MultiOutputClassifier(estimator=estimator, n_jobs=-1)
+                           ('multi_class', MultiOutputClassifier(estimator=estimator, n_jobs=n_jobs)
                             )]
                           )
 
@@ -153,7 +154,7 @@ def grid_search(model, params, X_train, Y_train, n_jobs=None):
     :param Y_train:
     :return: Optimised model
     """
-    cv = GridSearchCV(model, params, n_jobs=n_jobs, cv=5, verbose=50, error_score=0, refit=True)
+    cv = GridSearchCV(model, params, n_jobs=n_jobs, cv=3, verbose=50, error_score=0, refit=True)
     cv.fit(X_train, Y_train)
 
     # Return the refitted model
@@ -173,7 +174,8 @@ def main():
 
         print('Building rnd forest model using lemmatisation...')
         model = build_model(tokenize,
-                            RandomForestClassifier(n_estimators=10))
+                            RandomForestClassifier(n_estimators=10),
+                            n_jobs=-1)
 
         print('Training model...')
         model.fit(X_train.iloc[:, 0].values, Y_train.values)
@@ -190,13 +192,15 @@ def main():
         # --------------
 
         print('Doing GridSearch...')
+        ## NOTE: The combined Grid search will take very long
+        ## WE can try to optimse on one param at a time and then use the best value from each run
         t_start = time.perf_counter()
         parameters = {'multi_class__estimator__n_estimators': [20, 50],  # 30
                       'multi_class__estimator__criterion': ['gini', 'entropy'],  # Entropy
-                      'multi_class__estimator__min_samples_split': [2, 4, 10],  # 2
-                      'multi_class__estimator__min_samples_leaf': [2, 4, 10],  # 4
+                      'multi_class__estimator__min_samples_split': [4, 10],  # 2
+                      'multi_class__estimator__min_samples_leaf': [4, 10],  # 4
                       }
-        model = grid_search(model, parameters, X_train.iloc[:, 0].values, Y_train.values)
+        model = grid_search(model, parameters, X_train.iloc[:, 0].values, Y_train.values, n_jobs=-1)
         t_stop = time.perf_counter()
         print("Elapsed time: %.1f [min]" % ((t_stop - t_start) / 60))
 
