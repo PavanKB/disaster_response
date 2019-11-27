@@ -3,8 +3,9 @@ import time
 import string
 import pandas as pd
 import numpy as np
-from sqlalchemy import create_engine
 import joblib
+from sqlalchemy import create_engine
+
 
 from sklearn.multioutput import MultiOutputClassifier
 from sklearn.feature_extraction.text import TfidfTransformer, CountVectorizer
@@ -15,8 +16,9 @@ from sklearn.pipeline import Pipeline
 
 import nltk
 nltk.download(['punkt', 'stopwords', 'wordnet'])
+from nltk import word_tokenize
 from nltk.corpus import stopwords
-from nltk.stem.wordnet import WordNetLemmatizer
+from nltk.stem import WordNetLemmatizer
 
 
 def load_data(database_filepath):
@@ -57,39 +59,37 @@ def is_stop_punc(token):
 
 def tokenize(text):
     """
-    Function to tokenise the text and perform lemmatisation
+    Function to tokenise the text and perform stemming
     https://towardsdatascience.com/stemming-lemmatization-what-ba782b7c0bd8
     https://stackoverflow.com/questions/10554052/what-are-the-major-differences-and-benefits-of-porter-and-lancaster-stemming-alg
     :param text: Text to analyse
     :return: List of tokens
-    >>> tokenize("This is a test for the tokeniser to see how effective it is.")
     """
-    text = text.lower()
+    tokens = word_tokenize(text)
+    lemmatizer = WordNetLemmatizer()
 
-    tokens = nltk.word_tokenize(text)
-    tokens_clean = [token for token in tokens if not is_stop_punc(token)]
+    clean_tokens = []
+    for tok in tokens:
+        clean_tok = lemmatizer.lemmatize(tok).lower().strip()
+        clean_tokens.append(clean_tok)
 
-    lemmatiser = WordNetLemmatizer()
-    result = [lemmatiser.lemmatize(token) for token in tokens_clean]
-
-    return result
+    return clean_tokens
 
 
-def build_model():
+def build_model(tokeniser, estimator):
     """
     Prepares a new instance of the Pipeline
+    :param tokeniser: Tokeniser to use
+    :param estimator: Estimator to use e.g RandomForest
     :return: Pipeline with transforms for text analysis
     """
-    classifier = Pipeline([
-        ('vect', CountVectorizer(tokenizer=tokenize)),
-        ('tf_idf', TfidfTransformer()),
-        ('multi_class', MultiOutputClassifier(estimator=
-                                              RandomForestClassifier(n_estimators=20),
-                                              n_jobs=-1
-                                              )
-         )
-    ])
-    
+
+    classifier = Pipeline([('vect', CountVectorizer(tokenizer=tokeniser)),
+                           ('tf_idf', TfidfTransformer()),
+                           ('multi_class', MultiOutputClassifier(estimator=estimator, n_jobs=-1)
+                            )]
+                          )
+
     return classifier
 
 
@@ -144,7 +144,7 @@ def save_model(model, model_filepath):
     joblib.dump(model, model_filepath)
 
 
-def grid_search(model, params, X_train, Y_train, n_jobs=1):
+def grid_search(model, params, X_train, Y_train, n_jobs=None):
     """
     Performs a grid search and returns the optimised model.
     :param model: The model to optimise
@@ -153,7 +153,7 @@ def grid_search(model, params, X_train, Y_train, n_jobs=1):
     :param Y_train:
     :return: Optimised model
     """
-    cv = GridSearchCV(model, params, n_jobs=n_jobs, cv=3, verbose=50, error_score=0, refit=True)
+    cv = GridSearchCV(model, params, n_jobs=n_jobs, cv=5, verbose=50, error_score=0, refit=True)
     cv.fit(X_train, Y_train)
 
     # Return the refitted model
@@ -169,21 +169,38 @@ def main():
         X, Y, category_names = load_data(database_filepath)
         X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
 
-        print('Building model...')
-        model = build_model()
+        # --------------
 
-        print('Doing GridSearch')
+        print('Building rnd forest model using lemmatisation...')
+        model = build_model(tokenize,
+                            RandomForestClassifier(n_estimators=10))
+
+        print('Training model...')
+        model.fit(X_train.iloc[:, 0].values, Y_train.values)
+
+        print('Saving model...\n    MODEL: {}'.format('rnd_frst_lem.pkl'))
+        save_model(model, 'rnd_frst_lem.pkl')
+
+        print('Evaluating model...')
         t_start = time.perf_counter()
-        parameters = {'multi_class__estimator__n_estimators': [40, 50],  # 30
-                      'multi_class__estimator__criterion': ['gini', 'entropy'],  # Entropy
-                      'multi_class__estimator__min_samples_split': [2, 4],  # 2
-                      'multi_class__estimator__min_samples_leaf': [2, 4],  # 4
-                      }
-        model = grid_search(model, parameters, X_train.iloc[:, 0].values, Y_train.values, n_jobs=1)
+        evaluate_model(model, X_test, Y_test, category_names)
         t_stop = time.perf_counter()
         print("Elapsed time: %.1f [min]" % ((t_stop - t_start) / 60))
 
-        print('Evaluating model...')
+        # --------------
+
+        print('Doing GridSearch...')
+        t_start = time.perf_counter()
+        parameters = {'multi_class__estimator__n_estimators': [20, 50],  # 30
+                      'multi_class__estimator__criterion': ['gini', 'entropy'],  # Entropy
+                      'multi_class__estimator__min_samples_split': [2, 4, 10],  # 2
+                      'multi_class__estimator__min_samples_leaf': [2, 4, 10],  # 4
+                      }
+        model = grid_search(model, parameters, X_train.iloc[:, 0].values, Y_train.values)
+        t_stop = time.perf_counter()
+        print("Elapsed time: %.1f [min]" % ((t_stop - t_start) / 60))
+
+        print('Evaluating Optimised model...')
         t_start = time.perf_counter()
         evaluate_model(model, X_test, Y_test, category_names)
         t_stop = time.perf_counter()
