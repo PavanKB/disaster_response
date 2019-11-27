@@ -42,7 +42,18 @@ def index():
     # TODO: Below is an example - modify to extract data for your own visuals
     genre_counts = df.groupby('genre').count()['message']
     genre_names = list(genre_counts.index)
-    
+
+    df_melt = df.melt(id_vars=['id', 'message', 'original', 'genre'], var_name='category')
+    categories_counts = df_melt.loc[:, ['category', 'value']].groupby('category').sum()['value']
+    categories_counts = categories_counts.sort_values()
+    categories_names = list(categories_counts.index)
+
+    categories_counts_bottom5 = categories_counts[:5]
+    categories_names_bottom5 = categories_names[:5]
+
+    categories_counts_top5 = categories_counts[-5:]
+    categories_names_top5 = categories_names[-5:]
+
     # create visuals
     # TODO: Below is an example - modify to create your own visuals
     graphs = [
@@ -61,6 +72,44 @@ def index():
                 },
                 'xaxis': {
                     'title': "Genre"
+                }
+            }
+        },
+
+        {
+            'data': [
+                Bar(
+                    x=categories_names_top5,
+                    y=categories_counts_top5
+                )
+            ],
+
+            'layout': {
+                'title': 'Top 5 categories by count',
+                'yaxis': {
+                    'title': "Count"
+                },
+                'xaxis': {
+                    'title': "Category"
+                }
+            }
+        },
+
+        {
+            'data': [
+                Bar(
+                    x=categories_names_bottom5,
+                    y=categories_counts_bottom5
+                )
+            ],
+
+            'layout': {
+                'title': 'Bottom 5 categories by count',
+                'yaxis': {
+                    'title': "Count"
+                },
+                'xaxis': {
+                    'title': "Category"
                 }
             }
         }
